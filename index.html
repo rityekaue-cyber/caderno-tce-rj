@@ -519,7 +519,7 @@ function Revisao({data,caderno,upd,onQuestaoFeita}) {
         <div>
           <div style={{background:"#071a10",border:"1px solid #0d3020",borderRadius:10,padding:16,marginBottom:12}}>
             <p style={{margin:"0 0 6px",fontSize:11,color:"#4ade80",fontWeight:700}}>✅ GABARITO</p>
-            <p style={{margin:0,fontSize:14,color:"#d4f0c8",lineHeight:1.75}}>{q?.gabarito}</p>
+            <div style={{margin:0,fontSize:14,color:"#d4f0c8",lineHeight:1.85}} dangerouslySetInnerHTML={{__html: q?.gabarito?.replace(/\n/g,"<br/>") || ""}} />
           </div>
           {q?.suaResposta&&<div style={{background:"#1a0808",border:"1px solid #2e1010",borderRadius:10,padding:12,marginBottom:12}}><p style={{margin:"0 0 4px",fontSize:11,color:"#f87171",fontWeight:700}}>❌ SUA RESPOSTA</p><p style={{margin:0,fontSize:13,color:"#f0c8c8"}}>{q.suaResposta}</p></div>}
           <div style={{display:"flex",gap:10,marginBottom:12}}>
@@ -558,6 +558,82 @@ function Revisao({data,caderno,upd,onQuestaoFeita}) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+
+// ─── RICH EDITOR ─────────────────────────────────────────────────────────────
+function RichEditor({ value, onChange, placeholder }) {
+  const editorRef = useRef(null);
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (editorRef.current && !initialized) {
+      editorRef.current.innerHTML = value || "";
+      setInitialized(true);
+    }
+  }, []);
+
+  function exec(cmd, val = null) {
+    editorRef.current.focus();
+    document.execCommand(cmd, false, val);
+    onChange(editorRef.current.innerHTML);
+  }
+
+  const toolBtnStyle = (active) => ({
+    background: active ? "#2a1060" : C.surface2,
+    border: `1px solid ${active ? C.accent : C.border2}`,
+    color: active ? C.accent : C.textDim,
+    padding: "5px 10px", borderRadius: 6, cursor: "pointer",
+    fontSize: 13, fontFamily: "inherit", fontWeight: 700,
+    minWidth: 32, textAlign: "center"
+  });
+
+  return (
+    <div style={{ border: `1px solid ${C.border2}`, borderRadius: 10, overflow: "hidden", background: C.surface }}>
+      {/* Toolbar */}
+      <div style={{ display: "flex", gap: 4, padding: "8px 10px", background: "#0f0f1e", borderBottom: `1px solid ${C.border}`, flexWrap: "wrap" }}>
+        <button onMouseDown={e=>{e.preventDefault();exec("bold")}} style={toolBtnStyle(false)} title="Negrito"><b>N</b></button>
+        <button onMouseDown={e=>{e.preventDefault();exec("italic")}} style={toolBtnStyle(false)} title="Itálico"><i>I</i></button>
+        <button onMouseDown={e=>{e.preventDefault();exec("underline")}} style={toolBtnStyle(false)} title="Sublinhado"><u>S</u></button>
+        <div style={{ width: 1, background: C.border, margin: "0 4px" }} />
+        <button onMouseDown={e=>{e.preventDefault();exec("foreColor","#4ade80")}} style={{...toolBtnStyle(false), color:"#4ade80"}} title="Verde">●</button>
+        <button onMouseDown={e=>{e.preventDefault();exec("foreColor","#f87171")}} style={{...toolBtnStyle(false), color:"#f87171"}} title="Vermelho">●</button>
+        <button onMouseDown={e=>{e.preventDefault();exec("foreColor","#60a5fa")}} style={{...toolBtnStyle(false), color:"#60a5fa"}} title="Azul">●</button>
+        <button onMouseDown={e=>{e.preventDefault();exec("foreColor","#f97316")}} style={{...toolBtnStyle(false), color:"#f97316"}} title="Laranja">●</button>
+        <button onMouseDown={e=>{e.preventDefault();exec("foreColor","#e8d8ff")}} style={{...toolBtnStyle(false), color:"#e8d8ff"}} title="Lilás">●</button>
+        <button onMouseDown={e=>{e.preventDefault();exec("foreColor","#fbbf24")}} style={{...toolBtnStyle(false), color:"#fbbf24"}} title="Amarelo">●</button>
+        <div style={{ width: 1, background: C.border, margin: "0 4px" }} />
+        <button onMouseDown={e=>{e.preventDefault();exec("insertUnorderedList")}} style={toolBtnStyle(false)} title="Lista">≡</button>
+        <button onMouseDown={e=>{e.preventDefault();exec("formatBlock","h3")}} style={{...toolBtnStyle(false), fontSize:11}} title="Título">T</button>
+        <button onMouseDown={e=>{e.preventDefault();exec("formatBlock","p")}} style={{...toolBtnStyle(false), fontSize:11}} title="Normal">¶</button>
+        <div style={{ width: 1, background: C.border, margin: "0 4px" }} />
+        <button onMouseDown={e=>{e.preventDefault();exec("removeFormat")}} style={{...toolBtnStyle(false), fontSize:11}} title="Limpar formatação">✕</button>
+      </div>
+      {/* Editor area */}
+      <div
+        ref={editorRef}
+        contentEditable
+        suppressContentEditableWarning
+        onInput={() => onChange(editorRef.current.innerHTML)}
+        data-placeholder={placeholder}
+        style={{
+          minHeight: 120, padding: "12px 14px", fontSize: 14,
+          color: C.text, lineHeight: 1.8, outline: "none",
+          background: C.surface,
+        }}
+      />
+      <style>{`
+        [contenteditable]:empty:before {
+          content: attr(data-placeholder);
+          color: #444458;
+          pointer-events: none;
+        }
+        [contenteditable] h3 { color: #e8d8ff; margin: 8px 0 4px; font-size: 14px; }
+        [contenteditable] ul { padding-left: 20px; }
+        [contenteditable] li { margin: 3px 0; }
+      `}</style>
     </div>
   );
 }
@@ -606,7 +682,10 @@ function Adicionar({data,caderno,upd,onAdded}) {
       <div style={{marginBottom:10}}><Label>TÓPICO</Label><input value={form.topico} onChange={e=>F("topico",e.target.value)} placeholder="Ex: Vinculação e Discricionariedade" style={inp}/></div>
       <div style={{marginBottom:10}}><Label color="#f87171">④ ENUNCIADO *</Label><textarea value={form.enunciado} onChange={e=>F("enunciado",e.target.value)} placeholder="Cole o enunciado completo do TEC aqui..." rows={5} style={{...inp,resize:"vertical",lineHeight:1.7}}/></div>
       {form.tipo==="multipla"&&<div style={{marginBottom:10}}><Label>ALTERNATIVAS</Label>{form.alternativas.map((alt,i)=><input key={i} value={alt} onChange={e=>setAlt(i,e.target.value)} placeholder={`Alternativa ${String.fromCharCode(65+i)}`} style={{...inp,marginBottom:6}}/>)}</div>}
-      <div style={{marginBottom:10}}><Label color="#4ade80">⑤ GABARITO *</Label><textarea value={form.gabarito} onChange={e=>F("gabarito",e.target.value)} placeholder="Resposta correta + justificativa..." rows={4} style={{...inp,resize:"vertical",lineHeight:1.7}}/></div>
+      <div style={{marginBottom:10}}>
+        <Label color="#4ade80">⑤ GABARITO *</Label>
+        <RichEditor value={form.gabarito} onChange={v=>F("gabarito",v)} placeholder="Resposta correta + justificativa completa..." />
+      </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
         <div><Label color="#f97316">SUA RESPOSTA</Label><input value={form.suaResposta} onChange={e=>F("suaResposta",e.target.value)} placeholder="O que você marcou..." style={inp}/></div>
         <div><Label>MACETE</Label><input value={form.anotacao} onChange={e=>F("anotacao",e.target.value)} placeholder="Dica para memorizar..." style={inp}/></div>
