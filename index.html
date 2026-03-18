@@ -509,7 +509,8 @@ function Revisao({data,caderno,upd,onQuestaoFeita}) {
           {q?.topico&&<Tag bg="#1a302022" color="#86efac" border="#1a302044">{q.topico}</Tag>}
         </div>
         <p style={{fontSize:15,lineHeight:1.8,color:C.text,margin:"0 0 14px"}}>{q?.enunciado}</p>
-        {q?.alternativas?.length>0&&<div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>{q.alternativas.map((alt,i)=><div key={i} style={{fontSize:13,color:C.textDim,padding:"7px 12px",background:C.surface2,borderRadius:7,border:`1px solid ${C.border}`}}>{alt}</div>)}</div>}
+        {q?.alternativas?.length>0&&<div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>{q.alternativas.map((alt,i)=><div key={i} onClick={()=>setMostrarGabarito(true)} style={{fontSize:13,color:C.textDim,padding:"10px 14px",background:C.surface2,borderRadius:7,border:`1px solid ${C.border}`,cursor:"pointer",transition:"all .15s"}} onMouseOver={e=>{e.currentTarget.style.background="#1e1e38";e.currentTarget.style.color=C.text;e.currentTarget.style.borderColor=C.accent;}} onMouseOut={e=>{e.currentTarget.style.background=C.surface2;e.currentTarget.style.color=C.textDim;e.currentTarget.style.borderColor=C.border;}}>{alt}</div>)}</div>}
+        {q?.alternativas?.length>0&&!mostrarGabarito&&<p style={{fontSize:11,color:C.textDim2,textAlign:"center",margin:"-4px 0 10px"}}>👆 Clique na alternativa para revelar o gabarito</p>}
         {q?.imagem&&<img src={q.imagem} alt="" style={{maxWidth:"100%",borderRadius:8,marginTop:8}}/>}
         {q?.anotacao&&<p style={{fontSize:12,color:"#6668aa",marginTop:10,padding:"8px 12px",background:"#111128",borderRadius:8,fontStyle:"italic"}}>📎 {q.anotacao}</p>}
       </div>
