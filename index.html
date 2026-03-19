@@ -111,7 +111,7 @@ function defaultData() {
         enunciado:"Os atos administrativos vinculados são aqueles em que a lei estabelece todos os requisitos para sua prática. Sobre o controle pelo Poder Judiciário, é correto afirmar:",
         alternativas:["A) O Judiciário não pode controlar atos vinculados","B) O Judiciário pode anular atos vinculados contrários à lei","C) O Judiciário pode substituir o mérito administrativo","D) Atos vinculados não admitem anulação"],
         gabarito:"B) O Judiciário pode anular atos vinculados contrários à lei.", suaResposta:"Confundi com atos discricionários", anotacao:"Vinculado = sem liberdade = controle judicial pleno de legalidade",
-        nivel:0, proximaRevisao:hj, historico:[], criadoEm:hj, imagem:null, tipoErro:"compreensao", acertosConsecutivos:0, destino:null },
+        nivel:0, proximaRevisao:hj, historico:[], criadoEm:hj, imagem:null, tipoErro:"compreensao", acertosConsecutivos:0, destino:null, fonte:"" },
     ],
     arvore: { "TCE-RJ": { "Direito Administrativo": { concluida:false, temas:{ "Atos Administrativos":{ concluida:false, topicos:{ "Vinculação e Discricionariedade":{ concluida:false, subtopicos:[] } } } } } } },
     metas: { "TCE-RJ": { 0:{horas:0,questoes:0,descanso:true}, 1:{horas:2,questoes:20,descanso:false}, 2:{horas:2,questoes:20,descanso:false}, 3:{horas:2,questoes:20,descanso:false}, 4:{horas:2,questoes:20,descanso:false}, 5:{horas:2,questoes:20,descanso:false}, 6:{horas:1,questoes:10,descanso:false} } },
@@ -297,6 +297,11 @@ function App() {
         <div style={{ maxWidth:1100,margin:"0 auto" }}>
           {aba==="dashboard"  && <Dashboard  data={data} caderno={caderno} minHoje={minHoje} metaHoje={metaHoje} sessaoQuestoes={sessaoQuestoes} setAba={setAba} />}
           {aba==="revisao"    && <Revisao    data={data} caderno={caderno} upd={upd} onQuestaoFeita={()=>setSessaoQuestoes(q=>q+1)} />}
+          {/* BOTÃO FLUTUANTE — só na revisão */}
+          {aba==="revisao"&&<button onClick={()=>setAba("adicionar")} title="Adicionar nova questão"
+            style={{position:"fixed",bottom:28,right:28,width:52,height:52,borderRadius:"50%",background:"linear-gradient(135deg,#7c3aed,#1e3a5f)",border:"2px solid #a78bfa",color:"#fff",fontSize:22,cursor:"pointer",boxShadow:"0 4px 24px #7c3aed60",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            ➕
+          </button>}
           {aba==="adicionar"  && <Adicionar  data={data} caderno={caderno} upd={upd} onAdded={()=>setAba("revisao")} />}
           {aba==="lista"      && <Lista      data={data} caderno={caderno} upd={upd} />}
           {aba==="exportar"   && <Exportar   data={data} caderno={caderno} upd={upd} />}
@@ -348,8 +353,47 @@ function Dashboard({data,caderno,minHoje,metaHoje,sessaoQuestoes,setAba}) {
   const pctQ=metaHoje.questoes>0?Math.min(100,Math.round((sessaoQuestoes/metaHoje.questoes)*100)):0;
   const nomeMes=new Date(ano,mes,1).toLocaleDateString("pt-BR",{month:"long",year:"numeric"});
 
+  // ① STREAK
+  const streak = (() => {
+    let s=0; const hj2=hoje();
+    const sorted=[...new Set(diasAcesso)].sort().reverse();
+    let esperado=new Date(hj2);
+    for(const d of sorted){
+      const ds=esperado.toISOString().split("T")[0];
+      if(d===ds){s++;esperado.setDate(esperado.getDate()-1);}
+      else if(d<ds) break;
+    }
+    return s;
+  })();
+
+  // ⑤ % acerto geral essa semana
+  const diasSem7 = Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-i);return d.toISOString().split("T")[0];});
+  const histSemana = qc.flatMap(q=>(q.historico||[]).filter(h=>diasSem7.includes(h.data)));
+  const acertosSem = histSemana.filter(h=>h.acertou).length;
+  const totalSem = histSemana.length;
+  const pctAcertoSem = totalSem>0?Math.round((acertosSem/totalSem)*100):null;
+
   return (
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:14}}>
+      {/* STREAK + % ACERTO GERAL */}
+      <div style={{gridColumn:"span 2",display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <div style={{background:"linear-gradient(135deg,#1a0f2e,#0f1a2e)",border:`1px solid #3a2a5e`,borderRadius:14,padding:"16px 20px",display:"flex",alignItems:"center",gap:16}}>
+          <div style={{fontSize:36}}>🔥</div>
+          <div>
+            <div style={{fontSize:32,fontWeight:700,color:streak>0?"#f97316":C.textDim,lineHeight:1}}>{streak}</div>
+            <div style={{fontSize:12,color:C.textDim,marginTop:2}}>{streak===1?"dia seguido":streak>1?"dias seguidos":"Comece hoje!"}</div>
+          </div>
+          {streak>=7&&<div style={{marginLeft:"auto",fontSize:11,color:"#f97316",background:"#2a1a0a",padding:"4px 10px",borderRadius:20,border:"1px solid #f9731630"}}>🏆 {streak>=30?"Mês!":streak>=14?"2 semanas!":"1 semana!"}</div>}
+        </div>
+        <div style={{background:"linear-gradient(135deg,#0a1a2a,#0a2a1a)",border:`1px solid ${pctAcertoSem>=70?"#22c55e30":pctAcertoSem>=50?"#eab30830":"#ef444430"}`,borderRadius:14,padding:"16px 20px",display:"flex",alignItems:"center",gap:16}}>
+          <div style={{fontSize:36}}>{pctAcertoSem===null?"📊":pctAcertoSem>=70?"🎯":pctAcertoSem>=50?"📈":"💪"}</div>
+          <div>
+            <div style={{fontSize:32,fontWeight:700,color:pctAcertoSem===null?C.textDim:pctAcertoSem>=70?"#22c55e":pctAcertoSem>=50?"#eab308":"#ef4444",lineHeight:1}}>{pctAcertoSem!==null?`${pctAcertoSem}%`:"–"}</div>
+            <div style={{fontSize:12,color:C.textDim,marginTop:2}}>{totalSem>0?`${acertosSem}/${totalSem} questões essa semana`:"Sem revisões essa semana"}</div>
+          </div>
+        </div>
+      </div>
+
       {/* PIPELINE */}
       <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,padding:20,gridColumn:"span 2"}}>
         <p style={{margin:"0 0 14px",fontSize:13,fontWeight:700,color:C.accent}}>⚡ Pipeline — {caderno}</p>
@@ -908,7 +952,7 @@ function RichEditor({ value, onChange, placeholder }) {
 
 // ─── ADICIONAR ────────────────────────────────────────────────────────────────
 function Adicionar({data,caderno,upd,onAdded}) {
-  const [form,setForm]=useState({tipo:"multipla",disciplina:"",tema:"",topico:"",enunciado:"",alternativas:["","","",""],gabarito:"",suaResposta:"",anotacao:"",imagem:null,tipoErro:""});
+  const [form,setForm]=useState({tipo:"multipla",disciplina:"",tema:"",topico:"",enunciado:"",alternativas:["","","",""],gabarito:"",suaResposta:"",anotacao:"",imagem:null,tipoErro:"",fonte:""});
   const fileRef=useRef();
   const F=(k,v)=>setForm(f=>({...f,[k]:v}));
   const setAlt=(i,v)=>setForm(f=>{const a=[...f.alternativas];a[i]=v;return{...f,alternativas:a};});
@@ -919,7 +963,7 @@ function Adicionar({data,caderno,upd,onAdded}) {
     if(!form.tipoErro){alert("Classifique o tipo de erro!");return;}
     const alts=form.tipo==="multipla"?form.alternativas.filter(a=>a.trim()):form.tipo==="vf"?["Verdadeiro","Falso"]:[];
     upd(d=>({...d,questoes:[...d.questoes,{id:Date.now(),caderno,...form,alternativas:alts,nivel:0,proximaRevisao:hoje(),historico:[],criadoEm:hoje(),acertosConsecutivos:0,destino:null}]}));
-    setForm({tipo:"multipla",disciplina:"",tema:"",topico:"",enunciado:"",alternativas:["","","",""],gabarito:"",suaResposta:"",anotacao:"",imagem:null,tipoErro:""});
+    setForm({tipo:"multipla",disciplina:"",tema:"",topico:"",enunciado:"",alternativas:["","","",""],gabarito:"",suaResposta:"",anotacao:"",imagem:null,tipoErro:"",fonte:""});
     onAdded();
   }
   const discExist=[...new Set((data.questoes||[]).filter(q=>q.caderno===caderno).map(q=>q.disciplina).filter(Boolean))];
@@ -957,6 +1001,9 @@ function Adicionar({data,caderno,upd,onAdded}) {
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
         <div><Label color="#f97316">SUA RESPOSTA</Label><input value={form.suaResposta} onChange={e=>F("suaResposta",e.target.value)} placeholder="O que você marcou..." style={inp}/></div>
         <div><Label>MACETE</Label><input value={form.anotacao} onChange={e=>F("anotacao",e.target.value)} placeholder="Dica para memorizar..." style={inp}/></div>
+      </div>
+      <div style={{marginBottom:10}}><Label>FONTE / BANCA</Label><input value={form.fonte||""} onChange={e=>F("fonte",e.target.value)} placeholder="Ex: CESPE 2023, FGV 2022, Simulado..." style={inp}/></div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10
       </div>
       <div style={{marginBottom:20}}><Label>IMAGEM</Label><div onDrop={handleDrop} onDragOver={e=>e.preventDefault()} onClick={()=>fileRef.current?.click()} style={{border:`2px dashed ${C.border2}`,borderRadius:10,padding:"16px",textAlign:"center",cursor:"pointer",background:C.surface2}}>{form.imagem?<div><img src={form.imagem} alt="preview" style={{maxHeight:100,borderRadius:8}}/><button onClick={e=>{e.stopPropagation();F("imagem",null);}} style={{display:"block",margin:"6px auto 0",...btn("#2e0c0c","#501a1a","#f87171"),fontSize:11}}>Remover</button></div>:<p style={{fontSize:12,color:C.textDim,margin:0}}>🖼 Arraste ou clique</p>}</div><input ref={fileRef} type="file" accept="image/*" onChange={handleImg} style={{display:"none"}}/></div>
       <button onClick={salvar} style={{width:"100%",background:"linear-gradient(135deg,#2a1060,#1a2a60)",border:"1px solid #4a2a9e",color:"#d8c8ff",padding:"14px",borderRadius:10,cursor:"pointer",fontSize:14,fontWeight:700,fontFamily:"inherit"}}>➕ Salvar no Caderno "{caderno}"</button>
@@ -1039,40 +1086,134 @@ function BancaConfig({data,caderno,upd}) {
 
 // ─── LISTA ────────────────────────────────────────────────────────────────────
 function Lista({data,caderno,upd}) {
-  const [busca,setBusca]=useState(""); const [filtroNivel,setFiltroNivel]=useState("Todos"); const [filtroDisc,setFiltroDisc]=useState("Todas"); const [aberto,setAberto]=useState(null);
+  const [busca,setBusca]=useState("");
+  const [filtroNivel,setFiltroNivel]=useState("Todos");
+  const [filtroDisc,setFiltroDisc]=useState("Todas");
+  const [aberto,setAberto]=useState(null);
+  const [editando,setEditando]=useState(null); // questão sendo editada
+
   const qc=(data.questoes||[]).filter(q=>q.caderno===caderno);
   const discs=["Todas",...new Set(qc.map(q=>q.disciplina).filter(Boolean))];
-  const filtradas=qc.filter(q=>{const mb=!busca||[q.enunciado,q.disciplina,q.tema,q.topico,q.gabarito,q.anotacao].filter(Boolean).some(s=>s.toLowerCase().includes(busca.toLowerCase()));const mn=filtroNivel==="Todos"||NIVEIS[q.nivel]===filtroNivel;const md=filtroDisc==="Todas"||q.disciplina===filtroDisc;return mb&&mn&&md;});
-  function excluir(id){if(!confirm("Excluir?"))return;upd(d=>({...d,questoes:d.questoes.filter(q=>q.id!==id)}));setAberto(null);}
+  const filtradas=qc.filter(q=>{
+    const mb=!busca||[q.enunciado,q.disciplina,q.tema,q.topico,q.gabarito,q.anotacao,q.fonte].filter(Boolean).some(s=>s.toLowerCase().includes(busca.toLowerCase()));
+    const mn=filtroNivel==="Todos"||NIVEIS[q.nivel]===filtroNivel;
+    const md=filtroDisc==="Todas"||q.disciplina===filtroDisc;
+    return mb&&mn&&md;
+  });
+
+  function excluir(id,e) {
+    e.stopPropagation();
+    if(!confirm("Excluir esta questão permanentemente?")) return;
+    upd(d=>({...d,questoes:d.questoes.filter(q=>q.id!==id)}));
+    setAberto(null);
+  }
+
+  function abrirEdicao(q,e) {
+    e.stopPropagation();
+    setEditando({...q, alternativas: q.alternativas?.length>0 ? [...q.alternativas,...Array(4).fill("")].slice(0,4) : ["","","",""]});
+  }
+
+  function salvarEdicao() {
+    if(!editando) return;
+    const alts = editando.alternativas.filter(a=>a.trim());
+    upd(d=>({...d,questoes:d.questoes.map(q=>q.id===editando.id?{...editando,alternativas:alts}:q)}));
+    setEditando(null);
+  }
+
   return (
     <div>
+      {/* FILTROS */}
       <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-        <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="🔍 Buscar..." style={{...inp,flex:1,minWidth:200}}/>
+        <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="🔍 Buscar enunciado, gabarito, macete, fonte..." style={{...inp,flex:1,minWidth:200}}/>
         <select value={filtroNivel} onChange={e=>setFiltroNivel(e.target.value)} style={{...inp,width:"auto"}}><option>Todos</option>{NIVEIS.map(n=><option key={n}>{n}</option>)}</select>
         <select value={filtroDisc} onChange={e=>setFiltroDisc(e.target.value)} style={{...inp,width:"auto"}}>{discs.map(d=><option key={d}>{d}</option>)}</select>
       </div>
       <p style={{fontSize:12,color:C.textDim,marginBottom:12}}>{filtradas.length} questão(ões)</p>
-      {filtradas.map(q=>{const pb=(data.prioridadeBanca?.[caderno]||{})[q.disciplina]||"baixa";const tInfo=q.tipoErro?TIPO_ERRO_CONFIG[q.tipoErro]:null;const dInfo=q.destino?DESTINO_CONFIG[q.destino]:null;return(
-        <div key={q.id} style={{background:C.surface,border:`1px solid ${C.border}`,borderLeft:`3px solid ${NIVEL_CORES[NIVEIS[q.nivel]]}`,borderRadius:10,padding:16,marginBottom:10,cursor:"pointer"}} onClick={()=>setAberto(aberto===q.id?null:q.id)}>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-            {q.disciplina&&<Tag bg="#3b1f6e22" color="#c8b8e8" border="#3b1f6e44">{q.disciplina}</Tag>}
-            {q.tema&&<Tag bg="#1e3a5f22" color="#93c5fd" border="#1e3a5f44">{q.tema}</Tag>}
-            <Pill cor={NIVEL_CORES[NIVEIS[q.nivel]]}>{NIVEIS[q.nivel]}</Pill>
-            <Pill cor={PRIORIDADE_COR[pb]}>{PRIORIDADE_LABEL[pb]}</Pill>
-            {tInfo&&<Pill cor={tInfo.cor}>{tInfo.icon} {tInfo.label}</Pill>}
-            {dInfo&&<Pill cor={dInfo.cor}>{dInfo.icon} {dInfo.label}</Pill>}
+
+      {/* MODAL EDIÇÃO */}
+      {editando&&(
+        <div style={{position:"fixed",inset:0,background:"#000b",display:"flex",alignItems:"flex-start",justifyContent:"center",zIndex:300,overflowY:"auto",padding:"20px"}}>
+          <div style={{background:"#12121e",border:`1px solid ${C.border2}`,borderRadius:16,padding:24,width:"100%",maxWidth:640,boxShadow:"0 20px 60px #000c",margin:"auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <h4 style={{margin:0,color:C.accent,fontSize:15}}>✏️ Editar Questão</h4>
+              <button onClick={()=>setEditando(null)} style={{background:"none",border:"none",color:C.textDim,cursor:"pointer",fontSize:20}}>×</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <div><Label>DISCIPLINA</Label><input value={editando.disciplina||""} onChange={e=>setEditando(v=>({...v,disciplina:e.target.value}))} style={inp}/></div>
+              <div><Label>TEMA</Label><input value={editando.tema||""} onChange={e=>setEditando(v=>({...v,tema:e.target.value}))} style={inp}/></div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <div><Label>TÓPICO</Label><input value={editando.topico||""} onChange={e=>setEditando(v=>({...v,topico:e.target.value}))} style={inp}/></div>
+              <div><Label>FONTE / BANCA</Label><input value={editando.fonte||""} onChange={e=>setEditando(v=>({...v,fonte:e.target.value}))} placeholder="Ex: CESPE 2023..." style={inp}/></div>
+            </div>
+            <div style={{marginBottom:10}}><Label color="#f87171">ENUNCIADO</Label><textarea value={editando.enunciado||""} onChange={e=>setEditando(v=>({...v,enunciado:e.target.value}))} rows={4} style={{...inp,resize:"vertical",lineHeight:1.7}}/></div>
+            {editando.tipo==="multipla"&&<div style={{marginBottom:10}}><Label>ALTERNATIVAS</Label>{editando.alternativas.map((alt,i)=><input key={i} value={alt} onChange={e=>{const a=[...editando.alternativas];a[i]=e.target.value;setEditando(v=>({...v,alternativas:a}));}} placeholder={`Alt. ${String.fromCharCode(65+i)}`} style={{...inp,marginBottom:6}}/>)}</div>}
+            <div style={{marginBottom:10}}><Label color="#4ade80">GABARITO</Label><textarea value={editando.gabarito||""} onChange={e=>setEditando(v=>({...v,gabarito:e.target.value}))} rows={3} style={{...inp,resize:"vertical",lineHeight:1.7}}/></div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <div><Label color="#f97316">SUA RESPOSTA</Label><input value={editando.suaResposta||""} onChange={e=>setEditando(v=>({...v,suaResposta:e.target.value}))} style={inp}/></div>
+              <div><Label>MACETE</Label><input value={editando.anotacao||""} onChange={e=>setEditando(v=>({...v,anotacao:e.target.value}))} style={inp}/></div>
+            </div>
+            <div style={{marginBottom:10}}><Label>TIPO DE ERRO</Label>
+              <div style={{display:"flex",gap:8}}>
+                {Object.entries(TIPO_ERRO_CONFIG).map(([key,cfg])=>(
+                  <button key={key} onClick={()=>setEditando(v=>({...v,tipoErro:key}))} style={{flex:1,...btn(editando.tipoErro===key?cfg.cor+"22":C.surface2,editando.tipoErro===key?cfg.cor:C.border2,editando.tipoErro===key?cfg.cor:C.textDim),fontSize:12,padding:"8px"}}>
+                    {cfg.icon} {cfg.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:20}}>
+              <button onClick={salvarEdicao} style={{flex:1,...btn("#2a1060","#4a2a9e",C.accent),padding:"12px",fontSize:14}}>💾 Salvar alterações</button>
+              <button onClick={()=>setEditando(null)} style={{...btn(C.surface2,C.border2,C.textDim),padding:"12px 20px"}}>Cancelar</button>
+            </div>
           </div>
-          <p style={{margin:0,fontSize:13,color:C.text,lineHeight:1.6}}>{aberto===q.id?q.enunciado:q.enunciado.slice(0,140)+(q.enunciado.length>140?"...":"")}</p>
-          {aberto===q.id&&<div style={{marginTop:14}}>
-            {q.alternativas?.length>0&&<div style={{marginBottom:10}}>{q.alternativas.map((a,i)=><div key={i} style={{fontSize:12,color:C.textDim,padding:"5px 10px",background:C.surface2,borderRadius:6,marginBottom:4}}>{a}</div>)}</div>}
-            <div style={{background:"#071a10",border:"1px solid #0d3020",borderRadius:8,padding:12,marginBottom:8}}><p style={{margin:"0 0 4px",fontSize:11,color:"#4ade80",fontWeight:700}}>✅ GABARITO</p><p style={{margin:0,fontSize:13,color:"#d4f0c8",lineHeight:1.7}}>{q.gabarito}</p></div>
-            {q.suaResposta&&<p style={{fontSize:12,color:"#f87171",padding:"7px 10px",background:"#1a0808",borderRadius:7,marginBottom:8}}>❌ {q.suaResposta}</p>}
-            {q.anotacao&&<p style={{fontSize:12,color:"#6668aa",fontStyle:"italic",padding:"7px 10px",background:"#111128",borderRadius:7,marginBottom:10}}>📎 {q.anotacao}</p>}
-            {q.historico?.length>0&&<div style={{marginBottom:10}}><p style={{fontSize:11,color:C.textDim,marginBottom:6,fontWeight:700}}>HISTÓRICO</p><div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{q.historico.slice(-12).map((h,i)=><span key={i} title={h.data} style={{fontSize:10,padding:"2px 6px",borderRadius:6,background:h.acertou?"#0c2e18":"#2e0c0c",color:h.acertou?"#4ade80":"#f87171"}}>{h.acertou?"✓":"✗"}</span>)}</div></div>}
-            <button onClick={e=>{e.stopPropagation();excluir(q.id);}} style={{...btn("#1a0808","#3a1010","#f87171"),fontSize:12}}>🗑 Excluir</button>
-          </div>}
         </div>
-      );})}
+      )}
+
+      {/* LISTA */}
+      {filtradas.map(q=>{
+        const pb=(data.prioridadeBanca?.[caderno]||{})[q.disciplina]||"baixa";
+        const tInfo=q.tipoErro?TIPO_ERRO_CONFIG[q.tipoErro]:null;
+        const dInfo=q.destino?DESTINO_CONFIG[q.destino]:null;
+        return(
+          <div key={q.id} style={{background:C.surface,border:`1px solid ${C.border}`,borderLeft:`3px solid ${NIVEL_CORES[NIVEIS[q.nivel]]}`,borderRadius:10,padding:16,marginBottom:10,cursor:"pointer"}} onClick={()=>setAberto(aberto===q.id?null:q.id)}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                  {q.disciplina&&<Tag bg="#3b1f6e22" color="#c8b8e8" border="#3b1f6e44">{q.disciplina}</Tag>}
+                  {q.tema&&<Tag bg="#1e3a5f22" color="#93c5fd" border="#1e3a5f44">{q.tema}</Tag>}
+                  {q.fonte&&<Tag bg="#1a1a0a22" color="#fbbf24" border="#fbbf2440">{q.fonte}</Tag>}
+                  <Pill cor={NIVEL_CORES[NIVEIS[q.nivel]]}>{NIVEIS[q.nivel]}</Pill>
+                  <Pill cor={PRIORIDADE_COR[pb]}>{PRIORIDADE_LABEL[pb]}</Pill>
+                  {tInfo&&<Pill cor={tInfo.cor}>{tInfo.icon} {tInfo.label}</Pill>}
+                  {dInfo&&<Pill cor={dInfo.cor}>{dInfo.icon} {dInfo.label}</Pill>}
+                </div>
+                <p style={{margin:0,fontSize:13,color:C.text,lineHeight:1.6}}>{aberto===q.id?q.enunciado:q.enunciado.slice(0,140)+(q.enunciado.length>140?"...":"")}</p>
+              </div>
+              {/* Botões sempre visíveis */}
+              <div style={{display:"flex",gap:6,flexShrink:0}} onClick={e=>e.stopPropagation()}>
+                <button onClick={e=>abrirEdicao(q,e)} style={{...btn(C.surface2,C.border2,C.accent),fontSize:11,padding:"5px 10px"}} title="Editar">✏️</button>
+                <button onClick={e=>excluir(q.id,e)} style={{...btn("#1a0808","#3a1010","#f87171"),fontSize:11,padding:"5px 10px"}} title="Excluir">🗑</button>
+              </div>
+            </div>
+
+            {aberto===q.id&&<div style={{marginTop:14}}>
+              {q.alternativas?.length>0&&<div style={{marginBottom:10}}>{q.alternativas.map((a,i)=><div key={i} style={{fontSize:12,color:C.textDim,padding:"5px 10px",background:C.surface2,borderRadius:6,marginBottom:4}}>{a}</div>)}</div>}
+              <div style={{background:"#071a10",border:"1px solid #0d3020",borderRadius:8,padding:12,marginBottom:8}}>
+                <p style={{margin:"0 0 4px",fontSize:11,color:"#4ade80",fontWeight:700}}>✅ GABARITO</p>
+                <div style={{margin:0,fontSize:13,color:"#d4f0c8",lineHeight:1.7}} dangerouslySetInnerHTML={{__html:q.gabarito?.replace(/\n/g,"<br/>")||""}}/>
+              </div>
+              {q.suaResposta&&<p style={{fontSize:12,color:"#f87171",padding:"7px 10px",background:"#1a0808",borderRadius:7,marginBottom:8}}>❌ {q.suaResposta}</p>}
+              {q.anotacao&&<p style={{fontSize:12,color:"#6668aa",fontStyle:"italic",padding:"7px 10px",background:"#111128",borderRadius:7,marginBottom:8}}>📎 {q.anotacao}</p>}
+              {q.fonte&&<p style={{fontSize:11,color:"#fbbf24",padding:"5px 10px",background:"#1a1a0a",borderRadius:7,marginBottom:8}}>📌 Fonte: {q.fonte}</p>}
+              {q.historico?.length>0&&<div style={{marginBottom:8}}>
+                <p style={{fontSize:11,color:C.textDim,marginBottom:6,fontWeight:700}}>HISTÓRICO</p>
+                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{q.historico.slice(-12).map((h,i)=><span key={i} title={h.data} style={{fontSize:10,padding:"2px 6px",borderRadius:6,background:h.acertou?"#0c2e18":"#2e0c0c",color:h.acertou?"#4ade80":"#f87171"}}>{h.acertou?"✓":"✗"}</span>)}</div>
+              </div>}
+            </div>}
+          </div>
+        );
+      })}
     </div>
   );
 }
